@@ -1,4 +1,4 @@
-import { createApp } from './bot';
+import { createApp, registerBotCommands } from './bot';
 import { NimClient } from './ai';
 import { ConfigError, loadConfig } from './config';
 import { createLogger, registerSecret } from './logger';
@@ -75,6 +75,9 @@ async function main(): Promise<void> {
   };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
+
+  // Register the bot's menu commands with Telegram (best-effort).
+  await registerBotCommands(bot.api, log);
 
   try {
     await bot.start({

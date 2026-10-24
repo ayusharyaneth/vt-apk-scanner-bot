@@ -33,6 +33,29 @@ const HELP_TEXT = [
   'Only authorized users can trigger scans.',
 ].join('\n');
 
+/**
+ * Registered with Telegram on startup so these appear in the bot's menu
+ * (the button next to the text field) and in the "/" command list.
+ */
+export const BOT_COMMANDS: ReadonlyArray<{ command: string; description: string }> = [
+  { command: 'start', description: 'Start the bot and see how it works' },
+  { command: 'scan', description: 'Reply to an APK message — force a fresh re-scan' },
+  { command: 'id', description: 'Show your Telegram user id and chat id' },
+  { command: 'help', description: 'How to use the scanner' },
+];
+
+/** Push BOT_COMMANDS to Telegram. Best-effort: never blocks startup. */
+export async function registerBotCommands(api: Bot['api'], log: Logger): Promise<void> {
+  try {
+    await api.setMyCommands([...BOT_COMMANDS]);
+    log.info('bot.commands_registered', { count: BOT_COMMANDS.length });
+  } catch (e) {
+    log.warn('bot.commands_register_failed', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 export function createApp(services: AppServices): Bot {
   const { cfg, log } = services;
   const bot = new Bot(cfg.telegramBotToken);
