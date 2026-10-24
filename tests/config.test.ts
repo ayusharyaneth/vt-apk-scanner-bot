@@ -67,34 +67,38 @@ describe('loadConfig', () => {
     expect(cfg.logLevel).toBe('debug');
   });
 
-  it('disables the AI summary when GLM_API_KEY is absent', () => {
+  it('disables the AI summary when no NIM key is present', () => {
     const cfg = loadConfig({ ...VALID_ENV }, { dotEnvPath: null });
     expect(cfg.ai).toBeNull();
   });
 
-  it('parses optional GLM settings with defaults and overrides', () => {
+  it('parses optional NVIDIA NIM settings with defaults and overrides', () => {
     const cfg = loadConfig({ ...VALID_ENV }, { dotEnvPath: null });
     expect(cfg.ai).toBeNull();
     const withAi = loadConfig(
       {
         ...VALID_ENV,
-        GLM_API_KEY: 'glm-secret-key',
-        GLM_API_BASE: 'https://custom.example/v4/',
-        GLM_MODEL: 'glm-5.3-flash',
-        GLM_TIMEOUT_SECONDS: '15',
-        GLM_SUMMARY_MAX_CHARS: '400',
+        NVIDIA_API_KEY: 'nvapi-secret-key',
+        NIM_API_BASE: 'https://custom.example/v1/',
+        NIM_MODEL: 'z-ai/glm-5.2',
+        NIM_TIMEOUT_SECONDS: '15',
+        NIM_SUMMARY_MAX_CHARS: '400',
       },
       { dotEnvPath: null },
     );
     expect(withAi.ai).toEqual({
-      apiKey: 'glm-secret-key',
-      apiBase: 'https://custom.example/v4',
-      model: 'glm-5.3-flash',
+      apiKey: 'nvapi-secret-key',
+      apiBase: 'https://custom.example/v1',
+      model: 'z-ai/glm-5.2',
       timeoutMs: 15_000,
       summaryMaxChars: 400,
     });
+    // NIM_API_KEY works as an alias for NVIDIA_API_KEY.
+    const alias = loadConfig({ ...VALID_ENV, NIM_API_KEY: 'alias-key' }, { dotEnvPath: null });
+    expect(alias.ai!.apiKey).toBe('alias-key');
+    expect(alias.ai!.model).toBe('z-ai/glm-5.3');
     expect(() =>
-      loadConfig({ ...VALID_ENV, GLM_API_KEY: 'k', GLM_TIMEOUT_SECONDS: '5s' }, { dotEnvPath: null }),
-    ).toThrow(/GLM_TIMEOUT_SECONDS/);
+      loadConfig({ ...VALID_ENV, NVIDIA_API_KEY: 'k', NIM_TIMEOUT_SECONDS: '5s' }, { dotEnvPath: null }),
+    ).toThrow(/NIM_TIMEOUT_SECONDS/);
   });
 });

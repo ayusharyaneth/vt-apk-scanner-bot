@@ -31,7 +31,7 @@ APK, get the report.
 | Telegram bot token | Create a bot with [@BotFather](https://t.me/BotFather) on Telegram | `TELEGRAM_BOT_TOKEN` |
 | VirusTotal API key | [virustotal.com](https://www.virustotal.com/gui/my-apikey) — free tier is enough (4 req/min, 500 uploads/day) | `VIRUSTOTAL_API_KEY` |
 | Authorized Telegram ids | Your own Telegram user id (and/or group chat id) — send `/id` to the running bot to discover it | `AUTHORIZED_IDS` |
-| *(Optional)* Zhipu API key | Only for AI risk summaries — Zhipu open platform (bigmodel.cn) | `GLM_API_KEY` |
+| *(Optional)* NVIDIA NIM API key | Only for AI risk summaries — free key at [build.nvidia.com](https://build.nvidia.com) | `NVIDIA_API_KEY` (alias: `NIM_API_KEY`) |
 
 Secrets are supplied by environment variables or a `.env` file (see
 [`.env.example`](.env.example)) — never hardcode them.
@@ -81,10 +81,11 @@ Optional fresh scan: **reply to an APK message with `/scan`** to force a new
 VirusTotal analysis even if a report exists. `/id` prints your user/chat id,
 `/start` and `/help` print usage.
 
-## Optional: AI risk assessment (GLM 5.3 Flash)
+## Optional: AI risk assessment (NVIDIA NIM — GLM-5.3)
 
-If `GLM_API_KEY` is set, the bot additionally calls the **GLM 5.3 Flash**
-model (Zhipu open-platform chat API) after each completed scan and replies
+If `NVIDIA_API_KEY` is set, the bot additionally calls the **GLM-5.3** model
+hosted on **NVIDIA NIM** (OpenAI-compatible API at
+`https://integrate.api.nvidia.com/v1`) after each completed scan and replies
 with a second message — a 2–4 sentence plain-language risk assessment that
 names the notable engine detections. Properties of this design:
 
@@ -92,13 +93,18 @@ names the notable engine detections. Properties of this design:
   output; it arrives as a clearly labeled follow-up message.
 - Best-effort only: an AI timeout, quota, or API error is logged and skipped —
   the scan report is always delivered regardless.
-- No `GLM_API_KEY` → the feature is fully off and no AI traffic happens.
+- No `NVIDIA_API_KEY` → the feature is fully off and no AI traffic happens.
 - The key is stored like the other secrets (env var / `.env`) and redacted
   from logs.
 
-Optional AI settings (defaults in `.env.example`): `GLM_API_BASE`
-(`https://open.bigmodel.cn/api/paas/v4`), `GLM_MODEL` (`glm-5.3-flash`),
-`GLM_TIMEOUT_SECONDS` (30), `GLM_SUMMARY_MAX_CHARS` (600).
+Get a free API key at [build.nvidia.com](https://build.nvidia.com) (Get API Key),
+then set `NVIDIA_API_KEY`. `NIM_API_KEY` is accepted as an alias.
+
+Optional AI settings (defaults in `.env.example`): `NIM_API_BASE`
+(`https://integrate.api.nvidia.com/v1`), `NIM_MODEL` (`z-ai/glm-5.3` — find the
+exact id on the model's page at build.nvidia.com and swap it any time, e.g. to
+another NIM-hosted model), `NIM_TIMEOUT_SECONDS` (30),
+`NIM_SUMMARY_MAX_CHARS` (600).
 
 ## Security & privacy
 
@@ -216,7 +222,7 @@ VIRUSTOTAL_API_KEY=<from virustotal.com/gui/my-apikey>
 AUTHORIZED_IDS=<your Telegram user id>   # send /id to the bot to discover it
 ```
 
-Optional: `GLM_API_KEY` (AI summaries) — see the AI section above and
+Optional: `NVIDIA_API_KEY` (AI summaries via NVIDIA NIM) — see the AI section above and
 `.env.example` for every other knob. Lock the file down:
 
 ```bash
@@ -319,7 +325,7 @@ src/
   bot.ts         grammY wiring: handlers, /scan, /help, /id, flood-wait retry
   pipeline.ts    scan orchestration (auth → download → hash → lookup/upload → poll → report)
   virustotal.ts  VT API v3 client: retries, rate limits, upload, polling
-  ai.ts          optional GLM 5.3 Flash summary client + prompt builder
+  ai.ts          optional NVIDIA NIM (GLM-5.3) summary client + prompt builder
   telegram.ts    status-message reporter + streaming Telegram downloader
   apk.ts         APK detection, ZIP/manifest validation, SHA-256
   classify.ts    verdict thresholds (never clean without completed results)

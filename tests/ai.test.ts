@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSummaryPrompt, GlmClient, GlmError } from '../src/ai';
+import { buildSummaryPrompt, NimClient, NimError } from '../src/ai';
 import type { AiScanContext, FetchLike } from '../src/ai';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -20,8 +20,8 @@ function context(overrides: Partial<AiScanContext> = {}): AiScanContext {
   };
 }
 
-function client(fetchImpl: FetchLike): GlmClient {
-  return new GlmClient({ apiKey: 'test-key', fetchImpl, timeoutMs: 1000 });
+function client(fetchImpl: FetchLike): NimClient {
+  return new NimClient({ apiKey: 'test-key', fetchImpl, timeoutMs: 1000 });
 }
 
 describe('buildSummaryPrompt', () => {
@@ -41,8 +41,8 @@ describe('buildSummaryPrompt', () => {
   });
 });
 
-describe('GlmClient.summarize', () => {
-  it('sends a chat-completions request and returns the content', async () => {
+describe('NimClient.summarize', () => {
+  it('sends an OpenAI-compatible chat-completions request and returns the content', async () => {
     let captured: RequestInit | undefined;
     let url = '';
     const fetchImpl = async (input: string | URL, init?: RequestInit): Promise<Response> => {
@@ -52,9 +52,9 @@ describe('GlmClient.summarize', () => {
     };
     const text = await client(fetchImpl).summarize('APK file: game.apk\nVerdict: MALICIOUS');
     expect(text).toBe('High risk Android trojan.');
-    expect(url).toContain('https://open.bigmodel.cn/api/paas/v4/chat/completions');
+    expect(url).toBe('https://integrate.api.nvidia.com/v1/chat/completions');
     const body = JSON.parse(String(captured!.body)) as Record<string, unknown>;
-    expect(body['model']).toBe('glm-5.3-flash');
+    expect(body['model']).toBe('z-ai/glm-5.3');
     expect(body['stream']).toBe(false);
     const messages = body['messages'] as Array<{ role: string; content: string }>;
     expect(messages[0]!.role).toBe('system');
@@ -63,38 +63,38 @@ describe('GlmClient.summarize', () => {
   });
 
   it('honors a custom model and api base', async () => {
-    const custom = new GlmClient({
+    const custom = new NimClient({
       apiKey: 'k',
-      apiBase: 'https://custom.example/v4/',
-      model: 'glm-5.3-flash',
+      apiBase: 'https://custom.example/v1/',
+      model: 'z-ai/glm-5.2',
       timeoutMs: 1000,
       fetchImpl: (input) => {
-        expect(String(input)).toBe('https://custom.example/v4/chat/completions');
+        expect(String(input)).toBe('https://custom.example/v1/chat/completions');
         return Promise.resolve(jsonResponse(200, { choices: [{ message: { content: 'ok' } }] }));
       },
     });
     await expect(custom.summarize('x')).resolves.toBe('ok');
   });
 
-  it('throws GlmError on HTTP errors', async () => {
+  it('throws NimError on HTTP errors', async () => {
     const fetchImpl = async (): Promise<Response> => jsonResponse(401, { error: { message: 'invalid api key' } });
-    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(GlmError);
+    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(NimError);
   });
 
-  it('throws GlmError on malformed JSON', async () => {
+  it('throws NimError on malformed JSON', async () => {
     const fetchImpl = async (): Promise<Response> => new Response('not json', { status: 200 });
-    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(GlmError);
+    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(NimError);
   });
 
-  it('throws GlmError when no content is returned', async () => {
+  it('throws NimError when no content is returned', async () => {
     const fetchImpl = async (): Promise<Response> => jsonResponse(200, { choices: [] });
-    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(GlmError);
+    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(NimError);
   });
 
-  it('throws GlmError on network failure', async () => {
+  it('throws NimError on network failure', async () => {
     const fetchImpl = async (): Promise<Response> => {
       throw new TypeError('fetch failed');
     };
-    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(GlmError);
+    await expect(client(fetchImpl).summarize('x')).rejects.toBeInstanceOf(NimError);
   });
 });

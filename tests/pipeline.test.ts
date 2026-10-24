@@ -387,10 +387,10 @@ describe('runScan — downloader errors', () => {
   });
 });
 
-describe('runScan — AI summary (GLM)', () => {
+describe('runScan — AI summary (NIM)', () => {
   it('appends an AI analysis message after the report when configured', async () => {
     const fakeAi = {
-      model: 'glm-5.3-flash',
+      model: 'z-ai/glm-5.3',
       summarize: vi.fn().mockResolvedValue('High-risk Android trojan; 23 of 70 engines agree.'),
     };
     const { deps, reporter, vt } = makeDeps({ ai: fakeAi });
@@ -409,12 +409,12 @@ describe('runScan — AI summary (GLM)', () => {
     expect(prompt).toContain('Kaspersky: Trojan.AndroidOS.Hebe.d');
     const aiEvents = reporter.events.filter((e) => e.kind === 'notify');
     expect(aiEvents.length).toBe(1);
-    expect(aiEvents[0]!.text).toContain('AI analysis (glm-5.3-flash)');
+    expect(aiEvents[0]!.text).toContain('AI analysis (z-ai/glm-5.3)');
     expect(aiEvents[0]!.text).toContain('High-risk Android trojan');
   });
 
   it('still completes the scan when the AI call fails', async () => {
-    const failingAi = { model: 'glm-5.3-flash', summarize: vi.fn().mockRejectedValue(new Error('GLM API returned HTTP 500')) };
+    const failingAi = { model: 'z-ai/glm-5.3', summarize: vi.fn().mockRejectedValue(new Error('NIM API returned HTTP 500')) };
     const { deps, reporter, vt } = makeDeps({ ai: failingAi });
     scriptFreshScan(vt);
     const result = await runScan(makeJob(), deps);

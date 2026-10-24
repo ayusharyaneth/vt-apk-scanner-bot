@@ -1,5 +1,5 @@
 import { createApp } from './bot';
-import { GlmClient } from './ai';
+import { NimClient } from './ai';
 import { ConfigError, loadConfig } from './config';
 import { createLogger, registerSecret } from './logger';
 import { createResultCache } from './pipeline';
@@ -57,7 +57,7 @@ async function main(): Promise<void> {
     vt,
     cache: createResultCache(cfg.cacheTtlMs),
     ai: cfg.ai
-      ? new GlmClient({
+      ? new NimClient({
           apiKey: cfg.ai.apiKey,
           apiBase: cfg.ai.apiBase,
           model: cfg.ai.model,

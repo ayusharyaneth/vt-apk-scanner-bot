@@ -34,7 +34,7 @@ export interface AppConfig {
   suspiciousThreshold: number;
   maxApkBytes: number;
   logLevel: string;
-  /** Optional GLM AI summary; null when GLM_API_KEY is not configured. */
+  /** Optional NVIDIA NIM AI summary; null when no API key is configured. */
   ai: AiConfig | null;
 }
 
@@ -118,14 +118,15 @@ export function loadConfig(
     ai: null,
   };
 
-  const glmApiKey = env['GLM_API_KEY']?.trim() ?? '';
-  cfg.ai = glmApiKey
+  // Accept the NIM-conventional NVIDIA_API_KEY, plus NIM_API_KEY as an alias.
+  const nimApiKey = (env['NVIDIA_API_KEY'] ?? env['NIM_API_KEY'] ?? '').trim();
+  cfg.ai = nimApiKey
     ? {
-        apiKey: glmApiKey,
-        apiBase: stringEnv(env, 'GLM_API_BASE', 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, ''),
-        model: stringEnv(env, 'GLM_MODEL', 'glm-5.3-flash'),
-        timeoutMs: intEnv(env, 'GLM_TIMEOUT_SECONDS', problems, 30, 5, 120) * 1000,
-        summaryMaxChars: intEnv(env, 'GLM_SUMMARY_MAX_CHARS', problems, 600, 100, 2000),
+        apiKey: nimApiKey,
+        apiBase: stringEnv(env, 'NIM_API_BASE', 'https://integrate.api.nvidia.com/v1').replace(/\/+$/, ''),
+        model: stringEnv(env, 'NIM_MODEL', 'z-ai/glm-5.3'),
+        timeoutMs: intEnv(env, 'NIM_TIMEOUT_SECONDS', problems, 30, 5, 120) * 1000,
+        summaryMaxChars: intEnv(env, 'NIM_SUMMARY_MAX_CHARS', problems, 600, 100, 2000),
       }
     : null;
 

@@ -2,10 +2,10 @@ import type { VTDetectionStats } from './virustotal';
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
-export class GlmError extends Error {
+export class NimError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'GlmError';
+    this.name = 'NimError';
   }
 }
 
@@ -61,7 +61,7 @@ export function buildSummaryPrompt(ctx: AiScanContext): string {
   return lines.join('\n');
 }
 
-export interface GlmClientOptions {
+export interface NimClientOptions {
   apiKey: string;
   apiBase?: string;
   model?: string;
@@ -70,21 +70,21 @@ export interface GlmClientOptions {
 }
 
 /**
- * Minimal Zhipu open-platform chat-completions client (non-streaming).
- * Summaries are best-effort: any failure throws GlmError and the caller
+ * NVIDIA NIM chat-completions client (OpenAI-compatible, non-streaming).
+ * Summaries are best-effort: any failure throws NimError and the caller
  * must continue without the AI section.
  */
-export class GlmClient implements AiSummarizer {
+export class NimClient implements AiSummarizer {
   readonly model: string;
   private readonly apiKey: string;
   private readonly apiBase: string;
   private readonly timeoutMs: number;
   private readonly fetchImpl: FetchLike;
 
-  constructor(opts: GlmClientOptions) {
+  constructor(opts: NimClientOptions) {
     this.apiKey = opts.apiKey;
-    this.apiBase = (opts.apiBase ?? 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
-    this.model = opts.model ?? 'glm-5.3-flash';
+    this.apiBase = (opts.apiBase ?? 'https://integrate.api.nvidia.com/v1').replace(/\/+$/, '');
+    this.model = opts.model ?? 'z-ai/glm-5.3';
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
   }
@@ -111,21 +111,21 @@ export class GlmClient implements AiSummarizer {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch (e) {
-      throw new GlmError(`GLM request failed: ${e instanceof Error ? e.message : String(e)}`);
+      throw new NimError(`NVIDIA NIM request failed: ${e instanceof Error ? e.message : String(e)}`);
     }
     if (!res.ok) {
       await res.body?.cancel().catch(() => {});
-      throw new GlmError(`GLM API returned HTTP ${res.status}`);
+      throw new NimError(`NVIDIA NIM API returned HTTP ${res.status}`);
     }
     let json: { choices?: Array<{ message?: { content?: unknown } }> };
     try {
       json = (await res.json()) as typeof json;
     } catch {
-      throw new GlmError('GLM API returned malformed JSON');
+      throw new NimError('NVIDIA NIM API returned malformed JSON');
     }
     const content = json.choices?.[0]?.message?.content;
     const text = typeof content === 'string' ? content.trim() : '';
-    if (!text) throw new GlmError('GLM API returned an empty summary');
+    if (!text) throw new NimError('NVIDIA NIM API returned an empty summary');
     return text;
   }
 }
