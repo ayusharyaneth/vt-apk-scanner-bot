@@ -187,7 +187,7 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
   try {
     const dl = await deps.downloader.downloadTo(job.fileId, dir);
     log.info('scan.downloaded', { scanId, bytes: dl.bytes });
-    await deps.reporter.progress(progressDownloaded(dl.bytes));
+    await deps.reporter.progress(progressDownloaded(fileName, dl.bytes));
 
     const validation = await validateApkFile(dl.filePath);
     if (!validation.ok) {
@@ -196,7 +196,7 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
 
     sha = await sha256File(dl.filePath);
     log.info('scan.hash', { scanId, sha256: sha, entries: validation.entryCount });
-    await deps.reporter.progress(progressCheckingVt(sha));
+    await deps.reporter.progress(progressCheckingVt(fileName, sha));
 
     const finish = async (report: VTFileReport, source: ReportSource): Promise<ScanResult> => {
       if (!sha) {
@@ -273,16 +273,16 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
       }
     }
 
-    await deps.reporter.progress(progressUploading());
+    await deps.reporter.progress(progressUploading(fileName));
     const analysisPromise = (async () => {
       const { analysisId } = await deps.vt.uploadFile(dl.filePath, fileName);
       log.info('scan.uploaded', { scanId, analysisId });
-      await deps.reporter.progress(progressQueued());
+      await deps.reporter.progress(progressQueued(fileName));
       return await deps.vt.pollAnalysis(
         analysisId,
         { intervalMs: deps.cfg.vtPollIntervalMs, timeoutMs: deps.cfg.vtPollTimeoutMs },
         async (attempt, status) => {
-          await deps.reporter.progress(progressAnalyzing(attempt, Math.round((now() - startedMs) / 1000), status));
+          await deps.reporter.progress(progressAnalyzing(fileName, Math.round((now() - startedMs) / 1000)));
         },
       );
     })();

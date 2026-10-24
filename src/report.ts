@@ -109,30 +109,35 @@ export function formatScanFailure(input: ScanFailureInput): string {
   return lines.join('\n');
 }
 
-/** Progress/status texts shown while the scan runs. */
+/** Progress/status texts shown while the scan runs. One message, live-edited. */
+
+function scanHeader(fileName: string): string {
+  return `🛡 <b>Scanning</b> ${escapeHtml(fileName)}`;
+}
+
 export function progressReceiving(fileName: string, fileSizeBytes: number | null): string {
-  const size = fileSizeBytes !== null && fileSizeBytes > 0 ? ` (${formatBytes(fileSizeBytes)})` : '';
-  return `⏳ <b>APK received</b> — <code>${escapeHtml(fileName)}</code>${size}\nDownloading from Telegram…`;
+  const size = fileSizeBytes !== null && fileSizeBytes > 0 ? ` · ${formatBytes(fileSizeBytes)}` : '';
+  return `${scanHeader(fileName)}${size}\n⏳ Downloading from Telegram…`;
 }
 
-export function progressDownloaded(bytes: number): string {
-  return `⏳ Downloaded ${formatBytes(bytes)} — validating APK and computing SHA-256…`;
+export function progressDownloaded(fileName: string, bytes: number): string {
+  return `${scanHeader(fileName)}\n⏳ Validating package · computing SHA-256… (${formatBytes(bytes)} received)`;
 }
 
-export function progressCheckingVt(sha256: string): string {
-  return `⏳ SHA-256: <code>${sha256}</code>\nChecking VirusTotal for an existing report…`;
+export function progressCheckingVt(fileName: string, sha256: string): string {
+  return `${scanHeader(fileName)}\n⏳ Checking VirusTotal for <code>${escapeHtml(sha256.slice(0, 16))}…</code>`;
 }
 
-export function progressUploading(): string {
-  return `⏳ No recent report found — uploading to VirusTotal for a fresh analysis…`;
+export function progressUploading(fileName: string): string {
+  return `${scanHeader(fileName)}\n⏳ No existing report — uploading to VirusTotal…`;
 }
 
-export function progressQueued(): string {
-  return `⏳ Upload accepted — analysis queued at VirusTotal (this can take a few minutes)…`;
+export function progressQueued(fileName: string): string {
+  return `${scanHeader(fileName)}\n⏳ Analysis queued — typically 1–3 minutes…`;
 }
 
-export function progressAnalyzing(attempt: number, elapsedSec: number, status: string): string {
-  return `⏳ Analysis in progress (status: ${escapeHtml(status)}, ${elapsedSec}s elapsed, check ${attempt})…`;
+export function progressAnalyzing(fileName: string, elapsedSec: number): string {
+  return `${scanHeader(fileName)}\n⏳ VirusTotal is analyzing… ${elapsedSec}s elapsed`;
 }
 
 /**

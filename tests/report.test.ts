@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   formatScanFailure,
   formatScanReport,
+  progressAnalyzing,
+  progressCheckingVt,
+  progressDownloaded,
+  progressQueued,
+  progressReceiving,
+  progressUploading,
   splitHtmlMessage,
   verdictEmoji,
 } from '../src/report';
@@ -102,6 +108,37 @@ describe('formatScanFailure', () => {
     expect(text).toContain('Not treated as clean');
     expect(text).toContain('https://www.virustotal.com/gui/file/' + 'b'.repeat(64));
     expect(text).toContain('Ref: abc-123');
+  });
+});
+
+describe('progress messages', () => {
+  const name = 'game.apk';
+
+  it('keeps one consistent header across every progress step', () => {
+    const texts = [
+      progressReceiving(name, 1024),
+      progressDownloaded(name, 2048),
+      progressCheckingVt(name, 'a'.repeat(64)),
+      progressUploading(name),
+      progressQueued(name),
+      progressAnalyzing(name, 30),
+    ];
+    for (const text of texts) {
+      expect(text).toContain('🛡 <b>Scanning</b> game.apk');
+      expect(text).toContain('⏳');
+      expect(text.length).toBeLessThan(500);
+    }
+  });
+
+  it('shows size, truncated hash and elapsed time where relevant', () => {
+    expect(progressReceiving(name, 5 * 1024 * 1024)).toContain('5.00 MB');
+    expect(progressDownloaded(name, 2048)).toContain('2.0 KB received');
+    expect(progressCheckingVt(name, 'a'.repeat(64))).toContain('a'.repeat(16) + '…');
+    expect(progressAnalyzing(name, 45)).toContain('45s elapsed');
+  });
+
+  it('escapes HTML in the file name inside progress headers', () => {
+    expect(progressReceiving('<b>evil</b>.apk', null)).toContain('&lt;b&gt;evil&lt;/b&gt;.apk');
   });
 });
 

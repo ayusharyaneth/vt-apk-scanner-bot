@@ -9,7 +9,7 @@ import type { ResultCache, ScanJob } from './pipeline';
 import type { VTFileReport } from './virustotal';
 import type { VirusTotalClient } from './virustotal';
 import { TelegramDownloader, TelegramReporter } from './telegram';
-import { Semaphore, errorMessage, sleep } from './util';
+import { Semaphore, errorMessage, escapeHtml, sleep } from './util';
 
 export interface AppServices {
   cfg: AppConfig;
@@ -21,16 +21,36 @@ export interface AppServices {
   ai?: AiSummarizer | null;
 }
 
-const HELP_TEXT = [
-  '🛡 <b>APK Malware Scanner</b>',
+const BRAND = '🛡 <b>APK Malware Scanner</b>';
+
+/** Short onboarding message for /start. */
+const START_TEXT = (name?: string): string =>
+  [
+    BRAND,
+    '',
+    `Hey${name ? ` ${escapeHtml(name)}` : ''} — send me an Android APK and I'll scan it against 70+ antivirus engines via VirusTotal, right here in this chat.`,
+    '',
+    '📎 Attach the file — the scan starts automatically.',
+    '↩️ Reply <code>/scan</code> to an earlier APK to force a fresh re-scan.',
+  ].join('\n');
+
+/** Detailed reference for /help. */
+const HELP_TEXT: string = [
+  BRAND,
   '',
-  'Send me an APK file as an attachment and I will scan it with VirusTotal automatically and reply with the report.',
+  '<b>How scanning works</b>',
+  '1. Attach an APK file (.apk, up to 20 MB) and send it',
+  '2. The scan starts automatically — you\'ll see live progress',
+  '3. You get a verdict, engine counts and a VirusTotal link',
   '',
   '<b>Commands</b>',
   '/scan — reply to an APK message to force a fresh re-scan',
-  '/id — show your user id and chat id (needed for AUTHORIZED_IDS)',
+  '/id — show your Telegram ids (needed for AUTHORIZED_IDS)',
   '',
-  'Only authorized users can trigger scans.',
+  '<b>Good to know</b>',
+  '• Files are never executed — only hashed and analyzed',
+  '• Known files get instant results; new ones take 1–3 minutes',
+  '• Only authorized users can trigger scans',
 ].join('\n');
 
 /**
@@ -154,7 +174,11 @@ export function createApp(services: AppServices): Bot {
   bot.command('scan', async (ctx) => {
     const replied = ctx.message?.reply_to_message?.document;
     if (!replied || !isApkDocument(replied)) {
-      await reply(ctx, log, 'Usage: reply to an APK message with /scan to force a fresh re-scan on VirusTotal.');
+      await reply(
+        ctx,
+        log,
+        '↩️ Reply to an APK message with <code>/scan</code> to force a fresh VirusTotal analysis.',
+      );
       return;
     }
     await runJob({
@@ -168,7 +192,11 @@ export function createApp(services: AppServices): Bot {
     });
   });
 
-  bot.command(['start', 'help'], async (ctx) => {
+  bot.command('start', async (ctx) => {
+    await reply(ctx, log, START_TEXT(ctx.from?.first_name));
+  });
+
+  bot.command('help', async (ctx) => {
     await reply(ctx, log, HELP_TEXT);
   });
 
@@ -176,7 +204,14 @@ export function createApp(services: AppServices): Bot {
     await reply(
       ctx,
       log,
-      `🆔 Your user id: <code>${ctx.from?.id ?? 'unknown'}</code>\n💬 This chat id: <code>${ctx.chat.id}</code>`,
+      [
+        '🪪 <b>Your Telegram ids</b>',
+        '',
+        `👤 User: <code>${ctx.from?.id ?? 'unknown'}</code>`,
+        `💬 Chat: <code>${ctx.chat.id}</code>`,
+        '',
+        'Add your user id to <code>AUTHORIZED_IDS</code> to enable scanning.',
+      ].join('\n'),
     );
   });
 
