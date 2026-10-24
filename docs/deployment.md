@@ -134,6 +134,32 @@ journalctl -u vt-apk-scanner-bot -f     # live logs (Ctrl+C to exit)
 
 The log line `{"event":"bot.started"}` means it is live.
 
+### Validating the setup with dummy data
+
+You can validate every step above **before** you have real keys. Run the same
+command systemd would run, with placeholder values in `.env`:
+
+```bash
+node node_modules/tsx/dist/cli.mjs src/main.ts
+```
+
+Expected output with **dummy credentials** — this is success, not a failure:
+
+```
+{"event":"startup.config","authorizedIds":[424242], ...}          ← .env parsed, config valid
+Fatal error: Call to 'deleteWebhook' failed! (401: Unauthorized)  ← expected with a dummy token
+```
+
+The `startup.config` line proves the clone, `npm ci`, `.env` parsing and the
+code all work. The 401 is correct behavior — Telegram rejected the *dummy*
+token; only real credentials complete startup (`{"event":"bot.started"}`).
+The VirusTotal and NVIDIA keys are first exercised when the first scan runs:
+a wrong `VIRUSTOTAL_API_KEY` shows up in scan logs as `VirusTotal rejected the
+API key (HTTP 401)` — see Troubleshooting below.
+
+Once real credentials are in place and `bot.started` appears, send an APK and
+watch `journalctl` for `bot.apk_received` → `scan.started` → `scan.completed`.
+
 ## 7. Test it
 
 On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
