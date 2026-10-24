@@ -30,7 +30,7 @@ node --version   # must be v20.15 or newer
 needs **no account or authentication**:
 
 ```bash
-git clone https://github.com/ayusharyaneth/vt-vt-apk-scanner-bot.git /opt/vt-vt-apk-scanner-bot
+git clone https://github.com/ayusharyaneth/vt-apk-scanner-bot.git /opt/vt-apk-scanner-bot
 ```
 
 You only ever need GitHub credentials on the VPS if you want to `git push`
@@ -39,7 +39,7 @@ from there (updates normally flow PC → GitHub → `git pull` on the VPS).
 **Option B — direct copy from your Windows PC** (run in PowerShell):
 
 ```powershell
-scp -r "path\to\vt-apk-scanner-bot" root@YOUR_VPS_IP:/opt/vt-vt-apk-scanner-bot
+scp -r "path\to\vt-apk-scanner-bot" root@YOUR_VPS_IP:/opt/vt-apk-scanner-bot
 ```
 
 ⚠️ **Never copy or commit your `.env` file** — create it directly on the VPS
@@ -50,7 +50,7 @@ Git history is world-readable, so the only acceptable place for secrets is the
 ## 4. Install dependencies and verify
 
 ```bash
-cd /opt/vt-vt-apk-scanner-bot
+cd /opt/vt-apk-scanner-bot
 npm ci
 npm run typecheck
 npm test
@@ -59,7 +59,7 @@ npm test
 ## 5. Create the secrets file on the VPS
 
 ```bash
-nano /opt/vt-vt-apk-scanner-bot/.env
+nano /opt/vt-apk-scanner-bot/.env
 ```
 
 Minimum required content (see [configuration.md](configuration.md) for everything):
@@ -75,7 +75,7 @@ NVIDIA_API_KEY=...
 Lock it down:
 
 ```bash
-chmod 600 /opt/vt-vt-apk-scanner-bot/.env
+chmod 600 /opt/vt-apk-scanner-bot/.env
 ```
 
 ## 6. Run it under systemd (auto-start, auto-restart)
@@ -84,7 +84,7 @@ Create a dedicated user (don't run as root):
 
 ```bash
 useradd -r -s /usr/sbin/nologin apkbot
-chown -R apkbot:apkbot /opt/vt-vt-apk-scanner-bot
+chown -R apkbot:apkbot /opt/vt-apk-scanner-bot
 ```
 
 Create the service:
@@ -100,13 +100,13 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-WorkingDirectory=/opt/vt-vt-apk-scanner-bot
+WorkingDirectory=/opt/vt-apk-scanner-bot
 ExecStart=/usr/bin/node node_modules/tsx/dist/cli.mjs src/main.ts
 Restart=on-failure
 RestartSec=5
 User=apkbot
 Group=apkbot
-EnvironmentFile=/opt/vt-vt-apk-scanner-bot/.env
+EnvironmentFile=/opt/vt-apk-scanner-bot/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -139,8 +139,8 @@ On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 | View logs | `journalctl -u vt-apk-scanner-bot -f` |
 | Restart | `systemctl restart vt-apk-scanner-bot` |
 | Stop | `systemctl stop vt-apk-scanner-bot` |
-| Update code | `cd /opt/vt-vt-apk-scanner-bot && git pull && npm ci && systemctl restart vt-apk-scanner-bot` |
-| Change config | edit `/opt/vt-vt-apk-scanner-bot/.env`, then restart |
+| Update code | `cd /opt/vt-apk-scanner-bot && git pull && npm ci && systemctl restart vt-apk-scanner-bot` |
+| Change config | edit `/opt/vt-apk-scanner-bot/.env`, then restart |
 
 ## Security hardening checklist
 

@@ -6,7 +6,7 @@
 
 No commands. No manual steps. Nothing is ever executed.
 
-[![CI](https://github.com/ayusharyaneth/vt-vt-apk-scanner-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/ayusharyaneth/vt-vt-apk-scanner-bot/actions/workflows/ci.yml)
+[![CI](https://github.com/ayusharyaneth/vt-apk-scanner-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/ayusharyaneth/vt-apk-scanner-bot/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/node-%E2%89%A520.15-339933?logo=node.js&logoColor=white)](package.json)
 [![Tests](https://img.shields.io/badge/tests-80%20passing-3fbf6b)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -61,7 +61,7 @@ re-scan · `/id` shows your ids · `/help` prints usage.
 ## Quick start
 
 ```bash
-git clone https://github.com/ayusharyaneth/vt-vt-apk-scanner-bot.git
+git clone https://github.com/ayusharyaneth/vt-apk-scanner-bot.git
 cd vt-apk-scanner-bot
 npm install
 cp .env.example .env        # fill in the three required values
