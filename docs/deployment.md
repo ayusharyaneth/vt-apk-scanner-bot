@@ -6,7 +6,14 @@ required**. The install directory is kept in an `APP_DIR` variable so you
 cannot mistype it; it is set to the Linux-standard `/opt` location. All steps
 run as `root` over SSH (use `sudo` if you log in as a normal user).
 
+> **Note:** `/opt` is a standard Linux directory (the conventional home for
+> manually-installed server software) and exists by default on every Ubuntu
+> system. It does **not** exist on Windows — run these commands on the VPS
+> over SSH, not in your local Windows terminal.
+
 ## 1. Get a VPS
+
+Any Ubuntu 22.04/24.04 VPS works. Connect:
 
 ```bash
 ssh root@YOUR_VPS_IP
@@ -44,8 +51,9 @@ npm run typecheck
 npm test
 ```
 
-You only ever need GitHub credentials on the VPS if you want to `git push`
-from there (updates normally flow PC → GitHub → `git pull` on the VPS).
+All 87 tests should pass. You only ever need GitHub credentials on the VPS if
+you want to `git push` from there (updates normally flow PC → GitHub →
+`git pull` on the VPS).
 
 ⚠️ **Never commit your `.env` file** — create it directly on the VPS (next
 step). The repo is public: everything in Git history is world-readable, so the
@@ -58,9 +66,21 @@ the bot.
 nano "$APP_DIR/.env"
 ```
 
-Minimum required content (see [configuration.md](configuration.md) for everything):
+Minimum required content:
 
-Lock it down:
+```
+TELEGRAM_BOT_TOKEN=...        # from @BotFather on Telegram
+VIRUSTOTAL_API_KEY=...        # from virustotal.com/gui/my-apikey (free tier is enough)
+AUTHORIZED_IDS=your_telegram_user_id   # send /id to the bot to discover it
+# optional:
+NVIDIA_API_KEY=...            # from build.nvidia.com — enables AI summaries
+```
+
+Every other option (upload policy, verdict thresholds, poll intervals, size
+caps, concurrency limits) has a safe default — see
+[configuration.md](configuration.md) for the full list.
+
+Lock the file down:
 
 ```bash
 chmod 600 "$APP_DIR/.env"
@@ -108,7 +128,9 @@ Check the generated unit looks right before starting (`cat
 the absolute real path, because systemd does not expand `~` or `$APP_DIR` on
 its own; the heredoc above already did that for you.
 
-The log line `{"event":"bot.started"}` means it is live.
+The log line `{"event":"bot.started"}` means the bot is live. From this point
+on, sending an APK to your bot in Telegram produces the full VirusTotal report
+in the same chat — no commands needed.
 
 ## 6. Test it
 
@@ -119,6 +141,9 @@ On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 3. The full report with verdict, engine counts and the VirusTotal link
 4. (if NVIDIA NIM configured) a `🤖 AI analysis` follow-up message
 
+The same flow is visible in the logs: `bot.apk_received` → `scan.started` →
+`scan.completed`.
+
 ## Day-2 operations
 
 | Task | Command |
@@ -126,8 +151,8 @@ On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 | View logs | `journalctl -u vt-apk-scanner-bot -f` |
 | Restart | `systemctl restart vt-apk-scanner-bot` |
 | Stop | `systemctl stop vt-apk-scanner-bot` |
-| Update code | `cd "$APP_DIR" && git pull && npm ci && systemctl restart vt-apk-scanner-bot` |
-| Change config | edit `"$APP_DIR/.env"`, then restart |
+| Update code | `export APP_DIR=/opt/vt-apk-scanner-bot; cd "$APP_DIR" && git pull && npm ci && systemctl restart vt-apk-scanner-bot` |
+| Change config | edit `"$APP_DIR/.env"`, then `systemctl restart vt-apk-scanner-bot` |
 
 ## Security hardening checklist
 
