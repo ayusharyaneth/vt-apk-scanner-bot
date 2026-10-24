@@ -30,34 +30,30 @@ const baseInput = {
 };
 
 describe('formatScanReport', () => {
-  it('includes every required field for a malicious verdict', () => {
+  it('renders a minimal report with every required field for a malicious verdict', () => {
     const text = formatScanReport({
       ...baseInput,
       verdict: 'MALICIOUS',
       stats: stats({ malicious: 12, suspicious: 3, undetected: 45 }),
     });
-    expect(text).toContain('game.apk');
-    expect(text).toContain('5.00 MB');
+    expect(text).toContain('🚨 <b>MALICIOUS</b> — 15/71 engines flagged (21.1%)');
+    expect(text).toContain('📦 game.apk · 5.00 MB');
     expect(text).toContain('a'.repeat(64));
-    expect(text).toContain('Status: MALICIOUS');
-    expect(text).toContain('12 malicious');
-    expect(text).toContain('3 suspicious');
-    expect(text).toContain('45 undetected');
-    expect(text).toContain('Engines (71 total)');
-    expect(text).toContain('15/71 engines (21.1%)');
-    expect(text).toContain('Completed:');
+    expect(text).toContain('🚨 12 · ⚠️ 3 · ✅ 10 · 🔎 45 · ⏸ 1');
+    expect(text).toContain('🕒');
+    expect(text).toContain('VirusTotal report');
     expect(text).toContain('https://www.virustotal.com/gui/file/' + 'a'.repeat(64));
     expect(text.length).toBeLessThan(4000);
   });
 
-  it('shows distinct status markers for clean, suspicious and malicious', () => {
+  it('shows distinct markers for clean, suspicious and malicious', () => {
     const clean = formatScanReport({ ...baseInput, verdict: 'CLEAN', stats: stats() });
     const suspicious = formatScanReport({ ...baseInput, verdict: 'SUSPICIOUS', stats: stats({ malicious: 1 }) });
     const malicious = formatScanReport({ ...baseInput, verdict: 'MALICIOUS', stats: stats({ malicious: 9 }) });
-    expect(clean).toContain('Status: CLEAN');
-    expect(clean).not.toContain('Status: MALICIOUS');
-    expect(suspicious).toContain('Status: SUSPICIOUS');
-    expect(malicious).toContain('Status: MALICIOUS');
+    expect(clean).toContain('<b>CLEAN</b> — 0/71 engines flagged (0.0%)');
+    expect(clean).not.toContain('<b>MALICIOUS</b>');
+    expect(suspicious).toContain('<b>SUSPICIOUS</b> — 1/71 engines flagged (1.4%)');
+    expect(malicious).toContain('<b>MALICIOUS</b> — 9/71 engines flagged (12.7%)');
     expect(new Set([verdictEmoji('CLEAN'), verdictEmoji('SUSPICIOUS'), verdictEmoji('MALICIOUS'), verdictEmoji('PENDING'), verdictEmoji('FAILED')]).size).toBe(5);
   });
 
@@ -80,7 +76,17 @@ describe('formatScanReport', () => {
       source: 'existing',
       durationSec: null,
     });
-    expect(text).toContain('Existing VirusTotal report reused');
+    expect(text).toContain('Existing report · last analyzed');
+  });
+
+  it('omits the VirusTotal link when the hash is not hex', () => {
+    const text = formatScanReport({
+      ...baseInput,
+      sha256: 'unknown',
+      verdict: 'CLEAN',
+      stats: stats(),
+    });
+    expect(text).not.toContain('https://www.virustotal.com/gui/file/');
   });
 });
 
@@ -92,11 +98,10 @@ describe('formatScanFailure', () => {
       sha256: 'b'.repeat(64),
       reason: 'analysis did not complete',
     });
-    expect(text).toContain('Scan failed');
-    expect(text).toContain('NOT classified as clean');
+    expect(text).toContain('FAILED — no verdict');
+    expect(text).toContain('Not treated as clean');
     expect(text).toContain('https://www.virustotal.com/gui/file/' + 'b'.repeat(64));
-    expect(text).toContain('abc-123');
-    expect(text).not.toContain('CLEAN');
+    expect(text).toContain('Ref: abc-123');
   });
 });
 

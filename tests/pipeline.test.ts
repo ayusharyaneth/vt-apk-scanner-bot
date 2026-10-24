@@ -168,12 +168,12 @@ describe('runScan — happy paths', () => {
     expect(result.status).toBe('CLEAN');
     expect(result.sha256).toBe(APK_SHA256);
     const text = reporter.finalText;
-    expect(text).toContain('Status: CLEAN');
+    expect(text).toContain('<b>CLEAN</b>');
     expect(text).toContain('game.apk');
     expect(text).toContain(APK_SHA256);
     expect(text).toContain('https://www.virustotal.com/gui/file/' + APK_SHA256);
-    expect(text).toContain('70 total');
-    expect(text).toContain('Completed:');
+    expect(text).toContain('0/70 engines flagged');
+    expect(text).toContain('🕒');
     expect(vt.uploadFile).toHaveBeenCalledTimes(1);
     // Progress updates were sent during download and analysis.
     const kinds = reporter.events.map((e) => e.kind);
@@ -190,9 +190,9 @@ describe('runScan — happy paths', () => {
     scriptFreshScan(vt, makeReport({ stats: makeStats({ malicious: 23, undetected: 42 }), totalEngines: 70 }));
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('MALICIOUS');
-    expect(reporter.finalText).toContain('Status: MALICIOUS');
-    expect(reporter.finalText).toContain('23 malicious');
-    expect(reporter.finalText).toContain('23/70 engines');
+    expect(reporter.finalText).toContain('<b>MALICIOUS</b>');
+    expect(reporter.finalText).toContain('🚨 23 ·');
+    expect(reporter.finalText).toContain('23/70 engines flagged');
   });
 
   it('reports SUSPICIOUS for 1–2 malicious detections', async () => {
@@ -200,7 +200,7 @@ describe('runScan — happy paths', () => {
     scriptFreshScan(vt, makeReport({ stats: makeStats({ malicious: 1, undetected: 64 }) }));
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('SUSPICIOUS');
-    expect(reporter.finalText).toContain('Status: SUSPICIOUS');
+    expect(reporter.finalText).toContain('<b>SUSPICIOUS</b>');
   });
 
   it('reuses a recent existing VirusTotal report without uploading', async () => {
@@ -209,7 +209,7 @@ describe('runScan — happy paths', () => {
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('CLEAN');
     expect(vt.uploadFile).not.toHaveBeenCalled();
-    expect(reporter.finalText).toContain('Existing VirusTotal report reused');
+    expect(reporter.finalText).toContain('Existing report · last analyzed');
   });
 
   it('re-analyzes when the existing report is older than the reuse window', async () => {
@@ -297,7 +297,7 @@ describe('runScan — authorization', () => {
     scriptFreshScan(vt);
     const result = await runScan(makeJob({ chatId: -100999, userId: 777 }), deps);
     expect(result.status).toBe('CLEAN');
-    expect(reporter.finalText).toContain('Status: CLEAN');
+    expect(reporter.finalText).toContain('<b>CLEAN</b>');
   });
 });
 
@@ -307,8 +307,8 @@ describe('runScan — failures (never reported as clean)', () => {
     const result = await runScan(makeJob({ fileSize: 21 * 1024 * 1024 }), deps);
     expect(result.status).toBe('FAILED');
     expect(downloader.calls).toBe(0);
-    expect(reporter.finalText).toContain('Scan failed');
-    expect(reporter.finalText).toContain('NOT classified as clean');
+    expect(reporter.finalText).toContain('FAILED — no verdict');
+    expect(reporter.finalText).toContain('Not treated as clean');
   });
 
   it('fails on files that are not valid APKs', async () => {
@@ -326,8 +326,8 @@ describe('runScan — failures (never reported as clean)', () => {
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('FAILED');
     expect(result.error).toBe('vt_error');
-    expect(reporter.finalText).toContain('NOT classified as clean');
-    expect(reporter.finalText).not.toContain('Status: CLEAN');
+    expect(reporter.finalText).toContain('Not treated as clean');
+    expect(reporter.finalText).not.toContain('<b>CLEAN</b>');
   });
 
   it('fails with a quota message when VirusTotal rate limits the upload', async () => {
@@ -395,7 +395,7 @@ describe('runScan — downloader errors', () => {
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('FAILED');
     expect(result.error).toBe('internal_error');
-    expect(reporter.finalText).toContain('Scan failed');
+    expect(reporter.finalText).toContain('FAILED — no verdict');
   });
 });
 
@@ -431,7 +431,7 @@ describe('runScan — AI summary (NIM)', () => {
     scriptFreshScan(vt);
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('CLEAN');
-    expect(reporter.finalText).toContain('Status: CLEAN');
+    expect(reporter.finalText).toContain('<b>CLEAN</b>');
     expect(reporter.events.filter((e) => e.kind === 'notify').length).toBe(0);
   });
 
@@ -452,16 +452,18 @@ describe('runScan — security hardening', () => {
     expect(result.status).toBe('FAILED');
     expect(result.error).toBe('temp_dir_failed');
     expect(reporter.finalText).toContain('temporary directory');
-    expect(reporter.finalText).toContain('NOT classified as clean');
+    expect(reporter.finalText).toContain('Not treated as clean');
   });
 
-  it('does not leak a non-hex sha256 into a VirusTotal href', async () => {
+  it('replaces a non-hex sha256 from VT with the locally computed hash', async () => {
     const { deps, reporter, vt } = makeDeps();
     scriptFreshScan(vt, makeReport({ sha256: 'unknown' }));
     const result = await runScan(makeJob(), deps);
     expect(result.status).toBe('CLEAN');
-    expect(reporter.finalText).not.toContain('https://www.virustotal.com/gui/file/unknown');
-    expect(reporter.finalText).not.toContain('<a href="https://www.virustotal.com/gui/file/');
+    expect(reporter.finalText).not.toContain('unknown');
+    // The report shows the real computed hash and a working VirusTotal link.
+    expect(reporter.finalText).toContain(`🔐 <code>${APK_SHA256}</code>`);
+    expect(reporter.finalText).toContain(`https://www.virustotal.com/gui/file/${APK_SHA256}`);
   });
 
   it('keys the result cache by the locally computed hash, not the VT-provided one', async () => {

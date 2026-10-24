@@ -48,60 +48,64 @@ function vtLink(sha256: string): string | null {
   return HEX64.test(sha256) ? vtFileLink(sha256) : null;
 }
 
-function fmtUtc(epochSec: number | null): string {
-  if (!epochSec) return 'unknown';
-  return new Date(epochSec * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function fmtCompact(epochSec: number | null): string {
+  if (!epochSec) return 'unknown time';
+  const d = new Date(epochSec * 1000);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${hh}:${mm} UTC`;
 }
 
 function sourceNote(source: ReportSource, completedAtEpochSec: number | null): string {
   switch (source) {
     case 'fresh':
-      return 'Fresh VirusTotal analysis triggered by this upload.';
+      return 'Fresh analysis · uploaded by this scan';
     case 'existing':
-      return `Existing VirusTotal report reused (last analyzed ${fmtUtc(completedAtEpochSec)}).`;
+      return `Existing report · last analyzed ${fmtCompact(completedAtEpochSec)}`;
     case 'cache':
-      return 'Result served from this bot\u2019s short-term cache for a recently scanned identical file.';
+      return 'Cached result · identical file scanned recently';
     case 'inflight':
-      return 'Identical file was scanned moments ago; this is that result.';
+      return 'Merged with an identical scan in progress';
   }
 }
 
 export function formatScanReport(input: ScanReportInput): string {
   const { stats } = input;
-  const name = escapeHtml(input.fileName);
   const flagged = stats.malicious + stats.suspicious;
   const pct = input.totalEngines > 0 ? ((flagged / input.totalEngines) * 100).toFixed(1) : '0.0';
-  const lines = [
-    `🛡 <b>APK Scan Report</b>`,
-    ``,
-    `📦 <b>File:</b> <code>${name}</code>${input.sizeBytes !== null ? ` (${formatBytes(input.sizeBytes)})` : ''}`,
-    `🔐 <b>SHA-256:</b> <code>${escapeHtml(input.sha256)}</code>`,
-    `${VERDICT_EMOJI[input.verdict]} <b>Status: ${input.verdict}</b>${input.reason ? ` — ${escapeHtml(input.reason)}` : ''}`,
-    `🧪 <b>Engines (${input.totalEngines} total):</b> 🚨 ${stats.malicious} malicious · ⚠️ ${stats.suspicious} suspicious · ✅ ${stats.harmless} harmless · 🔎 ${stats.undetected} undetected · ⏸ ${stats.timeout + stats.other} no-result`,
-    `📈 <b>Detection rate:</b> ${flagged}/${input.totalEngines} engines (${pct}%)`,
-    `🕒 <b>Completed:</b> ${fmtUtc(input.completedAtEpochSec)}${input.durationSec !== null ? ` — scan took ${input.durationSec}s` : ''}`,
-  ];
   const link = vtLink(input.sha256);
-  if (link) lines.push(`🔗 <a href="${link}">Full report on VirusTotal</a>`);
-  lines.push(
+  const size = input.sizeBytes !== null ? ` · ${formatBytes(input.sizeBytes)}` : '';
+  const lines: string[] = [
+    `${VERDICT_EMOJI[input.verdict]} <b>${input.verdict}</b> — ${flagged}/${input.totalEngines} engines flagged (${pct}%)`,
     ``,
-    `<i>${escapeHtml(sourceNote(input.source, input.completedAtEpochSec))}</i>`,
-  );
+    `📦 ${escapeHtml(input.fileName)}${size}`,
+    `🔐 <code>${escapeHtml(input.sha256)}</code>`,
+    `🧪 🚨 ${stats.malicious} · ⚠️ ${stats.suspicious} · ✅ ${stats.harmless} · 🔎 ${stats.undetected} · ⏸ ${stats.timeout + stats.other}`,
+    `🕒 ${fmtCompact(input.completedAtEpochSec)}${input.durationSec !== null ? ` · ${input.durationSec}s` : ''}`,
+  ];
+  if (link) lines.push(``, `🔗 <a href="${link}">VirusTotal report</a>`);
+  lines.push(`<i>${escapeHtml(sourceNote(input.source, input.completedAtEpochSec))}</i>`);
   return lines.join('\n');
 }
 
 export function formatScanFailure(input: ScanFailureInput): string {
   const lines = [
-    `❌ <b>Scan failed — no verdict</b>`,
+    `❌ <b>FAILED — no verdict</b>`,
     ``,
-    `📦 <b>File:</b> <code>${escapeHtml(input.fileName)}</code>`,
+    `📦 ${escapeHtml(input.fileName)}`,
   ];
   if (input.sha256) {
-    lines.push(`🔐 <b>SHA-256:</b> <code>${escapeHtml(input.sha256)}</code>`);
-    const link = vtLink(input.sha256);
-    if (link) lines.push(`🔗 <a href="${link}">Check VirusTotal manually</a>`);
+    lines.push(`🔐 <code>${escapeHtml(input.sha256)}</code>`);
   }
-  lines.push(``, `❗ <b>Reason:</b> ${escapeHtml(input.reason)}`, ``, `<i>The file was NOT classified as clean. Nothing was executed.</i>`, ``, `<i>Scan reference: ${input.scanId}</i>`);
+  lines.push(``, `❗ ${escapeHtml(input.reason)}`);
+  const link = input.sha256 ? vtLink(input.sha256) : null;
+  if (link) lines.push(``, `🔗 <a href="${link}">Check VirusTotal manually</a>`);
+  lines.push(
+    `<i>Not treated as clean · nothing was executed</i>`,
+    `<i>Ref: ${input.scanId}</i>`,
+  );
   return lines.join('\n');
 }
 

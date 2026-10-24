@@ -203,6 +203,12 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
         return fail('internal_error', 'Internal error: scan finished without a computed hash.');
       }
       const detection = classifyDetection(report.stats, deps.cfg);
+      // The locally computed hash is authoritative. VirusTotal sometimes
+      // omits the sha256 in analysis responses (reporting 'unknown') —
+      // never surface that; the real hash is always known here.
+      if (!/^[a-f0-9]{64}$/i.test(report.sha256)) {
+        report.sha256 = sha;
+      }
       if (detection.verdict === 'FAILED') {
         return fail('no_engine_results', 'VirusTotal returned results from zero engines, so no verdict can be given. This does NOT mean the file is clean.', {
           detection: detection.reason,
