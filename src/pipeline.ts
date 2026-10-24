@@ -80,6 +80,8 @@ export interface ScanDeps {
   cache: ResultCache;
   inflight: Map<string, Promise<VTFileReport>>;
   log: Logger;
+  /** Injectable for tests; defaults to a real mkdtemp under the OS temp dir. */
+  createTempDir?: () => Promise<string>;
   /** Optional AI summarizer (GLM); absent → no AI section in reports. */
   ai?: AiSummarizer | null;
   now?: () => number;
@@ -174,7 +176,14 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
     );
   }
 
-  const dir = await createScanDir();
+  let dir: string;
+  try {
+    dir = await (deps.createTempDir ?? createScanDir)();
+  } catch (e) {
+    return fail('temp_dir_failed', 'Could not create a secure temporary directory on the server (disk full or permission problem). Nothing was downloaded or scanned.', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
   try {
     const dl = await deps.downloader.downloadTo(job.fileId, dir);
     log.info('scan.downloaded', { scanId, bytes: dl.bytes });
@@ -190,6 +199,9 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
     await deps.reporter.progress(progressCheckingVt(sha));
 
     const finish = async (report: VTFileReport, source: ReportSource): Promise<ScanResult> => {
+      if (!sha) {
+        return fail('internal_error', 'Internal error: scan finished without a computed hash.');
+      }
       const detection = classifyDetection(report.stats, deps.cfg);
       if (detection.verdict === 'FAILED') {
         return fail('no_engine_results', 'VirusTotal returned results from zero engines, so no verdict can be given. This does NOT mean the file is clean.', {
@@ -212,7 +224,8 @@ export async function runScan(job: ScanJob, deps: ScanDeps): Promise<ScanResult>
         source,
       });
       await deps.reporter.final(text);
-      deps.cache.set(report.sha256, report);
+      // Key the cache by the locally computed hash — never by a VT-provided value.
+      deps.cache.set(sha, report);
       await appendAiSummary(deps, detection.verdict, fileName, report);
       log.info('scan.completed', {
         scanId,

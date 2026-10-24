@@ -23,6 +23,8 @@ variables always win** over `.env` values. Full defaults in
 | `CACHE_TTL_MINUTES` | `30` | How long an identical file's recent result is served from the in-memory cache (0 = disabled). VirusTotal's own hash reports still deduplicate across restarts. |
 | `MALICIOUS_THRESHOLD` | `3` | Engines flagging the file malicious ≥ this → **MALICIOUS**. |
 | `SUSPICIOUS_THRESHOLD` | `1` | Any malicious detection, or suspicious ≥ this → **SUSPICIOUS**. Never applies to incomplete analyses (those are FAILED). |
+| `MAX_CONCURRENT_SCANS` | `2` | Maximum APKs scanned at the same time (1–10). Flood protection. |
+| `SCAN_QUEUE_LIMIT` | `5` | Scans may wait in queue when busy; beyond this senders get a "scanner is busy" reply (0 = no queue). |
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error`. Logs are structured JSON; all registered secrets are redacted. |
 
 ## Optional — VirusTotal tuning

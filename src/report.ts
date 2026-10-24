@@ -41,6 +41,13 @@ export function verdictEmoji(verdict: Verdict): string {
   return VERDICT_EMOJI[verdict];
 }
 
+/** A well-formed lowercase/uppercase hex SHA-256 — the only value safe to embed in a VT link. */
+const HEX64 = /^[a-f0-9]{64}$/i;
+
+function vtLink(sha256: string): string | null {
+  return HEX64.test(sha256) ? vtFileLink(sha256) : null;
+}
+
 function fmtUtc(epochSec: number | null): string {
   if (!epochSec) return 'unknown';
   return new Date(epochSec * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
@@ -73,10 +80,13 @@ export function formatScanReport(input: ScanReportInput): string {
     `🧪 <b>Engines (${input.totalEngines} total):</b> 🚨 ${stats.malicious} malicious · ⚠️ ${stats.suspicious} suspicious · ✅ ${stats.harmless} harmless · 🔎 ${stats.undetected} undetected · ⏸ ${stats.timeout + stats.other} no-result`,
     `📈 <b>Detection rate:</b> ${flagged}/${input.totalEngines} engines (${pct}%)`,
     `🕒 <b>Completed:</b> ${fmtUtc(input.completedAtEpochSec)}${input.durationSec !== null ? ` — scan took ${input.durationSec}s` : ''}`,
-    `🔗 <a href="${vtFileLink(input.sha256)}">Full report on VirusTotal</a>`,
+  ];
+  const link = vtLink(input.sha256);
+  if (link) lines.push(`🔗 <a href="${link}">Full report on VirusTotal</a>`);
+  lines.push(
     ``,
     `<i>${escapeHtml(sourceNote(input.source, input.completedAtEpochSec))}</i>`,
-  ];
+  );
   return lines.join('\n');
 }
 
@@ -88,7 +98,8 @@ export function formatScanFailure(input: ScanFailureInput): string {
   ];
   if (input.sha256) {
     lines.push(`🔐 <b>SHA-256:</b> <code>${escapeHtml(input.sha256)}</code>`);
-    lines.push(`🔗 <a href="${vtFileLink(input.sha256)}">Check VirusTotal manually</a>`);
+    const link = vtLink(input.sha256);
+    if (link) lines.push(`🔗 <a href="${link}">Check VirusTotal manually</a>`);
   }
   lines.push(``, `❗ <b>Reason:</b> ${escapeHtml(input.reason)}`, ``, `<i>The file was NOT classified as clean. Nothing was executed.</i>`, ``, `<i>Scan reference: ${input.scanId}</i>`);
   return lines.join('\n');

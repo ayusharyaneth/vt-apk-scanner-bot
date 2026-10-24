@@ -49,6 +49,16 @@ the service works for everyone. Consequences and controls:
   counts, detection names) is sent to NVIDIA NIM over HTTPS when
   `NVIDIA_API_KEY` is set. The file itself is never sent to the AI.
 
+## Availability (DoS resistance)
+
+- **Scan concurrency is capped** (`MAX_CONCURRENT_SCANS`, default 2) with a
+  bounded queue (`SCAN_QUEUE_LIMIT`, default 5). A flood of APK documents —
+  malicious or accidental — cannot spawn unbounded 20 MB downloads, temp
+  directories, or VirusTotal uploads; excess senders get a "scanner is busy"
+  reply. This protects memory, disk, and the daily VT quota.
+- Temp-directory creation failures (disk full) are contained: the scan reports
+  FAILED gracefully instead of throwing an unhandled error.
+
 ## Rate limits and abuse resistance
 
 - VirusTotal 429 responses honor `Retry-After`, capped by
@@ -64,3 +74,16 @@ the service works for everyone. Consequences and controls:
 
 SIGINT/SIGTERM trigger a graceful stop: polling halts, in-flight scans finish,
 temp directories are cleaned, then the process exits.
+
+## Known trade-offs (documented, by design)
+
+- **Group allowlists are broad.** If a chat id is in `AUTHORIZED_IDS`, *any*
+  member of that group can trigger scans and spend the VirusTotal quota.
+  Prefer user-id allowlists for tighter control.
+- **AI prompt-injection surface.** The AI summary prompt includes engine names
+  and result strings from VirusTotal — third-party data. Mitigations: the AI
+  output is clearly labeled and never authoritative, cannot change the scan
+  verdict, and is HTML-escaped before sending. Still, do not act on the AI
+  text alone.
+- **`/id` answers anyone.** It only echoes the requester's own ids back to
+  them (needed for onboarding); it reveals nothing about other users.

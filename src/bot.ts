@@ -9,7 +9,7 @@ import type { ResultCache, ScanJob } from './pipeline';
 import type { VTFileReport } from './virustotal';
 import type { VirusTotalClient } from './virustotal';
 import { TelegramDownloader, TelegramReporter } from './telegram';
-import { errorMessage, sleep } from './util';
+import { Semaphore, errorMessage, sleep } from './util';
 
 export interface AppServices {
   cfg: AppConfig;
@@ -59,28 +59,45 @@ export function createApp(services: AppServices): Bot {
     getFile: (fileId) => bot.api.getFile(fileId),
   });
 
-  const runJob = (job: ScanJob) =>
-    runScan(job, {
-      cfg: {
-        authorizedIds: cfg.authorizedIds,
-        maxApkBytes: cfg.maxApkBytes,
-        allowUploads: cfg.allowUploads,
-        vtPollIntervalMs: cfg.vtPollIntervalMs,
-        vtPollTimeoutMs: cfg.vtPollTimeoutMs,
-        vtReuseMaxAgeHours: cfg.vtReuseMaxAgeHours,
-        cacheTtlMs: cfg.cacheTtlMs,
-        maliciousThreshold: cfg.maliciousThreshold,
-        suspiciousThreshold: cfg.suspiciousThreshold,
-        unauthorizedReply: cfg.unauthorizedReply,
-      },
-      vt: services.vt,
-      reporter: new TelegramReporter(bot.api, job.chatId, log),
-      downloader,
-      cache: services.cache,
-      inflight: services.inflight ?? new Map<string, Promise<VTFileReport>>(),
-      ai: cfg.ai ? services.ai ?? null : null,
-      log,
-    });
+  // Caps concurrent scans and the waiting queue so a flood of documents
+  // cannot exhaust memory, disk, or the VirusTotal daily quota.
+  const limiter = new Semaphore(cfg.maxConcurrentScans, cfg.scanQueueLimit);
+
+  const runJob = async (job: ScanJob) => {
+    const release = await limiter.acquire();
+    if (!release) {
+      log.warn('scan.busy_rejected', { chatId: job.chatId, userId: job.userId, queued: limiter.queued });
+      await new TelegramReporter(bot.api, job.chatId, log).notify(
+        '⏳ The scanner is busy with other uploads right now. Please wait a moment and send the file again.',
+      );
+      return;
+    }
+    try {
+      return await runScan(job, {
+        cfg: {
+          authorizedIds: cfg.authorizedIds,
+          maxApkBytes: cfg.maxApkBytes,
+          allowUploads: cfg.allowUploads,
+          vtPollIntervalMs: cfg.vtPollIntervalMs,
+          vtPollTimeoutMs: cfg.vtPollTimeoutMs,
+          vtReuseMaxAgeHours: cfg.vtReuseMaxAgeHours,
+          cacheTtlMs: cfg.cacheTtlMs,
+          maliciousThreshold: cfg.maliciousThreshold,
+          suspiciousThreshold: cfg.suspiciousThreshold,
+          unauthorizedReply: cfg.unauthorizedReply,
+        },
+        vt: services.vt,
+        reporter: new TelegramReporter(bot.api, job.chatId, log),
+        downloader,
+        cache: services.cache,
+        inflight: services.inflight ?? new Map<string, Promise<VTFileReport>>(),
+        ai: cfg.ai ? services.ai ?? null : null,
+        log,
+      });
+    } finally {
+      release();
+    }
+  };
 
   // Automatic APK scans — no command needed.
   bot.on('message:document', async (ctx) => {

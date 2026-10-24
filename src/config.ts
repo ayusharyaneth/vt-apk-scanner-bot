@@ -33,6 +33,8 @@ export interface AppConfig {
   maliciousThreshold: number;
   suspiciousThreshold: number;
   maxApkBytes: number;
+  maxConcurrentScans: number;
+  scanQueueLimit: number;
   logLevel: string;
   /** Optional NVIDIA NIM AI summary; null when no API key is configured. */
   ai: AiConfig | null;
@@ -114,6 +116,8 @@ export function loadConfig(
     maliciousThreshold: intEnv(env, 'MALICIOUS_THRESHOLD', problems, 3, 1, 100),
     suspiciousThreshold: intEnv(env, 'SUSPICIOUS_THRESHOLD', problems, 1, 1, 100),
     maxApkBytes: intEnv(env, 'MAX_APK_BYTES', problems, TELEGRAM_DOWNLOAD_CAP, 1024, MAX_APK_BYTES_HARD_CAP),
+    maxConcurrentScans: intEnv(env, 'MAX_CONCURRENT_SCANS', problems, 2, 1, 10),
+    scanQueueLimit: intEnv(env, 'SCAN_QUEUE_LIMIT', problems, 5, 0, 50),
     logLevel: stringEnv(env, 'LOG_LEVEL', 'info').toLowerCase(),
     ai: null,
   };

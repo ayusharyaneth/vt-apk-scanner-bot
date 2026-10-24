@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { buildApk } from './helpers/zip';
 import { createResultCache, runScan } from '../src/pipeline';
 import type { ScanDeps, ScanJob, ScanRuntimeConfig, VTApi } from '../src/pipeline';
@@ -77,7 +77,19 @@ class FakeDownloader {
   };
 }
 
-function makeVt(): VTApi & { getFileReport: ReturnType<typeof vi.fn>; uploadFile: ReturnType<typeof vi.fn>; pollAnalysis: ReturnType<typeof vi.fn> } {
+type MockedVT = {
+  getFileReport: Mock<(sha256: string) => Promise<VTFileReport | null>>;
+  uploadFile: Mock<(filePath: string, fileName: string) => Promise<{ analysisId: string }>>;
+  pollAnalysis: Mock<
+    (
+      analysisId: string,
+      opts: { intervalMs: number; timeoutMs: number },
+      onTick?: (attempt: number, status: string) => void,
+    ) => Promise<VTFileReport>
+  >;
+};
+
+function makeVt(): MockedVT {
   return {
     getFileReport: vi.fn(),
     uploadFile: vi.fn(),
@@ -100,7 +112,7 @@ function makeDeps(overrides: Partial<ScanDeps> = {}): { deps: ScanDeps; reporter
   };
   const reporter = new FakeReporter();
   const downloader = new FakeDownloader();
-  const vt = makeVt();
+  const vt: MockedVT = makeVt();
   const deps: ScanDeps = {
     cfg,
     vt,
@@ -116,7 +128,7 @@ function makeDeps(overrides: Partial<ScanDeps> = {}): { deps: ScanDeps; reporter
     deps,
     reporter: deps.reporter as FakeReporter,
     downloader: deps.downloader as FakeDownloader,
-    vt: deps.vt as ReturnType<typeof makeVt>,
+    vt: deps.vt as MockedVT,
   };
 }
 
@@ -428,6 +440,41 @@ describe('runScan — AI summary (NIM)', () => {
     scriptFreshScan(vt);
     await runScan(makeJob(), deps);
     expect(reporter.events.filter((e) => e.kind === 'notify').length).toBe(0);
+  });
+});
+
+describe('runScan — security hardening', () => {
+  it('fails gracefully when the temp directory cannot be created', async () => {
+    const { deps, reporter } = makeDeps({
+      createTempDir: vi.fn().mockRejectedValue(new Error('disk full')),
+    });
+    const result = await runScan(makeJob(), deps);
+    expect(result.status).toBe('FAILED');
+    expect(result.error).toBe('temp_dir_failed');
+    expect(reporter.finalText).toContain('temporary directory');
+    expect(reporter.finalText).toContain('NOT classified as clean');
+  });
+
+  it('does not leak a non-hex sha256 into a VirusTotal href', async () => {
+    const { deps, reporter, vt } = makeDeps();
+    scriptFreshScan(vt, makeReport({ sha256: 'unknown' }));
+    const result = await runScan(makeJob(), deps);
+    expect(result.status).toBe('CLEAN');
+    expect(reporter.finalText).not.toContain('https://www.virustotal.com/gui/file/unknown');
+    expect(reporter.finalText).not.toContain('<a href="https://www.virustotal.com/gui/file/');
+  });
+
+  it('keys the result cache by the locally computed hash, not the VT-provided one', async () => {
+    const { deps, vt } = makeDeps();
+    scriptFreshScan(vt, makeReport({ sha256: 'f'.repeat(64) }));
+    await runScan(makeJob(), deps);
+    expect(vt.uploadFile).toHaveBeenCalledTimes(1);
+    // Second upload of the same file must hit the cache even though the VT
+    // report carried a different sha256 value.
+    const second = await runScan(makeJob({ fileId: 'file-2' }), deps);
+    expect(second.status).toBe('CLEAN');
+    expect(vt.getFileReport).toHaveBeenCalledTimes(1);
+    expect(vt.uploadFile).toHaveBeenCalledTimes(1);
   });
 });
 
