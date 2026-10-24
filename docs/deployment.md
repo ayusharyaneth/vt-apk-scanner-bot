@@ -6,11 +6,6 @@ required**. The install directory is kept in an `APP_DIR` variable so you
 cannot mistype it; it is set to the Linux-standard `/opt` location. All steps
 run as `root` over SSH (use `sudo` if you log in as a normal user).
 
-> **Note on `/opt`:** it is a standard Linux directory (the conventional home
-> for manually-installed server software) and exists by default on every
-> Ubuntu system. It does **not** exist on Windows — run the VPS commands on
-> the VPS over SSH, not in your local Windows terminal.
-
 ## 1. Get a VPS
 
 ```bash
@@ -64,14 +59,6 @@ nano "$APP_DIR/.env"
 ```
 
 Minimum required content (see [configuration.md](configuration.md) for everything):
-
-```
-TELEGRAM_BOT_TOKEN=...        # from @BotFather on Telegram
-VIRUSTOTAL_API_KEY=...        # from virustotal.com/gui/my-apikey
-AUTHORIZED_IDS=your_telegram_user_id   # send /id to the bot to discover it
-# optional:
-NVIDIA_API_KEY=...            # from build.nvidia.com — AI summaries
-```
 
 Lock it down:
 
