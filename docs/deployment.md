@@ -162,25 +162,47 @@ After a reconnect, re-run `export APP_DIR=/opt/vt-apk-scanner-bot` first.
 
 ## Updating the bot
 
-Paste this whole block — it runs top to bottom and stops safe at each step.
-Safe for force-pushed history: `.env` is untracked and never touched.
+This is the **verified-working** update procedure — tested on a real VPS where
+a plain `git pull` fails (force-pushed history) and the repo directory is
+owned by `apkbot` (git's ownership guard). Paste the whole block:
 
 ```bash
-export APP_DIR=/opt/vt-apk-scanner-bot
-cd "$APP_DIR" || exit 1
+# A) Allow git to operate on the repo owned by apkbot
+sudo git config --global --add safe.directory /opt/vt-apk-scanner-bot
+
+# B) Make sure the directory IS a git repo pointing at GitHub
+#    (if it already is a repo, these are no-ops)
+cd /opt/vt-apk-scanner-bot
+sudo git init -q
+sudo git remote remove origin 2>/dev/null
+sudo git remote add origin https://github.com/ayusharyaneth/vt-apk-scanner-bot.git
+
+# C) Download and force-align the code to GitHub
 sudo git fetch origin
 sudo git reset --hard origin/main
+
+# D) Verify — this MUST show the latest commit from GitHub
+sudo git log --oneline -1
+
+# E) Refresh dependencies and restart the bot
 sudo npm ci
-npm run typecheck && npm test
 sudo systemctl restart vt-apk-scanner-bot
-systemctl status vt-apk-scanner-bot
-journalctl -u vt-apk-scanner-bot -n 20
+
+# F) Confirm
+systemctl status vt-apk-scanner-bot --no-pager | head -3
+sudo journalctl -u vt-apk-scanner-bot -n 10 --no-pager
 ```
 
-The last two lines are just for checking: `active (running)` + the
-`{"event":"bot.started"}` log line. If tests fail, the old version is still
-running (the restart comes last) — roll back with
-`sudo git reset --hard origin/main~1` and restart again.
+What to check:
+
+- **Step D must print the same commit hash as GitHub's `main`.** If it errors
+  instead, stop and debug (paste the error).
+- Step F should show `active (running)` and the `{"event":"bot.started"}`
+  log line. The `sudo` on `journalctl` matters: the bot logs as the
+  `apkbot` user, and a plain `journalctl` hides other users' entries.
+- Your `.env` is untracked and is **never touched** by `git reset --hard`.
+- If tests in a future version fail, the old code is still one commit away:
+  `sudo git reset --hard origin/main~1` + restart rolls back.
 
 ## Security hardening checklist
 
