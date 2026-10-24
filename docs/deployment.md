@@ -23,6 +23,18 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash -apt-get install -y node
 node --version
 ```
 
+> **What is `/opt`?** It is a standard Linux directory — by the Filesystem
+> Hierarchy Standard, `/opt` is where manually-installed, self-contained
+> server software lives (as opposed to packages installed via `apt`, which go
+> under `/usr`). It exists by default on every Ubuntu system, so there is
+> nothing to install; the `mkdir -p` below is just an idempotent safeguard.
+> Any directory works (e.g. `/srv/vt-apk-scanner-bot`) as long as you use the
+> same path in the systemd unit (step 6).
+
+```bash
+mkdir -p /opt    # safeguard — /opt already exists on stock Ubuntu
+```
+
 ## 3. Copy the project to the VPS
 
 **Option A — via Git** (recommended). The repository is public, so cloning
