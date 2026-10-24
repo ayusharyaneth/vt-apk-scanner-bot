@@ -1,5 +1,5 @@
 {
-  "name": "apk-scanner-bot",
+  "name": "vt-apk-scanner-bot",
   "version": "1.0.0",
   "description": "Telegram bot that automatically scans received APK files with the VirusTotal API and replies with a verdict report in the same chat.",
   "type": "module",
