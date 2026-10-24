@@ -157,8 +157,39 @@ After a reconnect, re-run `export APP_DIR=/opt/vt-apk-scanner-bot` first.
 | View logs | `journalctl -u vt-apk-scanner-bot -f` |
 | Restart | `sudo systemctl restart vt-apk-scanner-bot` |
 | Stop | `sudo systemctl stop vt-apk-scanner-bot` |
-| Update code | `cd "$APP_DIR" && git pull && npm ci && sudo systemctl restart vt-apk-scanner-bot` |
+| Update code | see [Updating the bot](#updating-the-bot) below |
 | Change config | `sudo nano "$APP_DIR/.env"`, then `sudo systemctl restart vt-apk-scanner-bot` |
+
+## Updating the bot
+
+When a new version is pushed to GitHub (e.g. from your PC), bring the VPS up
+to date:
+
+```bash
+export APP_DIR=/opt/vt-apk-scanner-bot   # re-run if this is a fresh SSH session
+cd "$APP_DIR"
+git pull
+npm ci                                   # refresh dependencies (may have changed)
+npm run typecheck && npm test            # verify before swapping the running bot
+sudo systemctl restart vt-apk-scanner-bot
+```
+
+Confirm the restart went well:
+
+```bash
+systemctl status vt-apk-scanner-bot      # "active (running)"
+journalctl -u vt-apk-scanner-bot -n 20   # look for {"event":"bot.started"}
+```
+
+Notes:
+
+- `npm ci` (not `npm install`) is important — it installs exactly what
+  `package-lock.json` pins, so a dependency change upstream is applied cleanly.
+- If `git pull` reports conflicts in `.env`, stop — your `.env` should never be
+  tracked by git; keep it local to the VPS.
+- If tests fail after the pull, the old version is still running (the restart
+  comes last) — roll back with `git checkout main~1` and
+  `sudo systemctl restart vt-apk-scanner-bot`, or wait for a fix.
 
 ## Security hardening checklist
 
