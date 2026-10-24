@@ -21,7 +21,7 @@ The bot requires Node ≥ 20.15 (tested on Node 24):
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs git
-node --version   # must be v20.15 or newer
+node --version
 ```
 
 ## 3. Copy the project to the VPS
