@@ -12,6 +12,30 @@ APK, get the report.
 └──────────┘ report  └────────────┘                  └────────────┘
 ```
 
+## Requirements
+
+**Runtime**
+
+| Requirement | Details |
+| --- | --- |
+| Node.js | **v20.15 or newer** (tested on Node 24) — includes the npm package manager |
+| Operating system | Any that runs Node: Linux (VPS/desktop), Windows, macOS |
+| Network | Outbound HTTPS access to `api.telegram.org`, `www.virustotal.com` and (optionally) `open.bigmodel.cn` |
+| Hardware | Minimal — 1 vCPU / 1 GB RAM and ~50 MB disk (plus temp space up to your `MAX_APK_BYTES` per scan) |
+| Runtime dependency | `grammy` (installed automatically via `npm install` / `npm ci`) — no other runtime dependencies |
+
+**Accounts & credentials**
+
+| Requirement | Where to get it | Configured via |
+| --- | --- | --- |
+| Telegram bot token | Create a bot with [@BotFather](https://t.me/BotFather) on Telegram | `TELEGRAM_BOT_TOKEN` |
+| VirusTotal API key | [virustotal.com](https://www.virustotal.com/gui/my-apikey) — free tier is enough (4 req/min, 500 uploads/day) | `VIRUSTOTAL_API_KEY` |
+| Authorized Telegram ids | Your own Telegram user id (and/or group chat id) — send `/id` to the running bot to discover it | `AUTHORIZED_IDS` |
+| *(Optional)* Zhipu API key | Only for AI risk summaries — Zhipu open platform (bigmodel.cn) | `GLM_API_KEY` |
+
+Secrets are supplied by environment variables or a `.env` file (see
+[`.env.example`](.env.example)) — never hardcode them.
+
 ## What the report contains
 
 Filename, file size, SHA-256, final status (**CLEAN / SUSPICIOUS / MALICIOUS / PENDING / FAILED**),
