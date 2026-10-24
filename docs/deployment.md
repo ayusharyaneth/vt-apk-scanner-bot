@@ -23,6 +23,9 @@ The bot requires Node ≥ 20.15 (tested on Node 24):
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
 sudo apt-get install -y nodejs git
 node --version   # must be v20.15 or newer
+
+# nano is used in step 4 to edit the secrets file (skip if already installed):
+sudo apt update && sudo apt install nano
 ```
 
 Create the install directory **owned by your user** (so the next steps need no
