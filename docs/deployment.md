@@ -26,16 +26,15 @@ node --version   # must be v20.15 or newer
 
 ## 3. Copy the project to the VPS
 
-**Option A — via Git** (recommended): clone the repo directly:
+**Option A — via Git** (recommended). The repository is public, so cloning
+needs **no account or authentication**:
 
 ```bash
 git clone https://github.com/ayusharyaneth/apk-scanner-bot.git /opt/apk-scanner-bot
 ```
 
-Private repo → authenticate first with one of:
-- `gh auth login` (GitHub CLI), or
-- a personal access token when git asks for a password, or
-- a deploy key (ssh-keygen + add under repo → Settings → Deploy keys).
+You only ever need GitHub credentials on the VPS if you want to `git push`
+from there (updates normally flow PC → GitHub → `git pull` on the VPS).
 
 **Option B — direct copy from your Windows PC** (run in PowerShell):
 
@@ -44,7 +43,9 @@ scp -r "path\to\apk-scanner-bot" root@YOUR_VPS_IP:/opt/apk-scanner-bot
 ```
 
 ⚠️ **Never copy or commit your `.env` file** — create it directly on the VPS
-(step 5).
+(step 5). This matters even more now that the repo is public: everything in
+Git history is world-readable, so the only acceptable place for secrets is the
+`.env` file on the machine that runs the bot.
 
 ## 4. Install dependencies and verify
 
@@ -146,12 +147,19 @@ On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 - [ ] Run as the dedicated `apkbot` user (done above), never root
 - [ ] `.env` is `chmod 600` and owned by `apkbot`
 - [ ] `AUTHORIZED_IDS` lists only your own ids — this is the gate that stops
-      strangers from spending your VirusTotal quota
+      strangers from spending your VirusTotal quota. With a public repo anyone
+      can find the bot's name in the code and message it, so this allowlist is
+      your only access control: prefer **user ids** over group-chat ids, and
+      treat unauthorized-message spam as expected background noise
+      (`UNAUTHORIZED_REPLY=false` silences the replies if it gets noisy)
 - [ ] Keep the VPS patched: `apt update && apt upgrade` regularly (or enable
       `unattended-upgrades`)
 - [ ] Firewall: the bot only makes **outbound** HTTPS calls, so you can default-
       deny all inbound ports except SSH: `ufw default deny incoming && ufw allow OpenSSH && ufw enable`
 - [ ] If the APKs are confidential, set `ALLOW_UPLOADS=false` (hash-lookup mode)
+- [ ] Never put secrets anywhere in the repository — it is public, so every
+      file, every commit, and the full Git history are world-readable. Secrets
+      live only in `.env` on the machines that need them
 
 ## Troubleshooting
 
