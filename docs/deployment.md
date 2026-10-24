@@ -1,51 +1,15 @@
-# Deployment — Testing locally & Hosting on a VPS (Ubuntu)
-
-Two ways to run the bot. Start with the **local quick test** — it works in any
-terminal (Windows PowerShell/Git Bash, macOS, Linux) and proves everything
-works before you touch a server. Then deploy to the VPS with the full
-systemd walkthrough.
-
-> **Why `/opt` failed in your terminal:** `/opt` is a Linux-only directory
-> (standard location for manually-installed server software). It does not
-> exist on Windows, and Git Bash maps it into `C:\Program Files\Git\` where
-> `mkdir` and `git clone` fail with permission errors. The local test below
-> uses your **home directory** instead, which works everywhere. `/opt` is used
-> only on the Linux VPS, where it exists by default.
-
-## Local quick test (any terminal, no VPS needed)
-
-Requires [Node.js](https://nodejs.org) ≥ 20.15 installed locally. Run these in
-whatever terminal you have — including PowerShell or Git Bash on Windows:
-
-```bash
-git clone https://github.com/ayusharyaneth/vt-apk-scanner-bot.git
-cd vt-apk-scanner-bot
-npm install
-cp .env.example .env     # Windows PowerShell: copy .env.example .env
-npm start
-```
-
-Fill the three required values into `.env` (see step 5 below for where to get
-them). What you should see:
-
-- **Real credentials** → `{"event":"bot.started", ...}` — open Telegram, send
-  an APK (≤ 20 MB) to your bot, and get the report.
-- **Placeholder/dummy credentials** → the `startup.config` log line followed
-  by `401: Unauthorized` — that is *correct* behavior with a fake token (see
-  [Validating with dummy data](#validating-the-setup-with-dummy-data) below).
-- `Ctrl+C` stops the bot cleanly (temp dirs are cleaned up on shutdown).
-
-The rest of this guide is for the real hosting setup on a VPS.
-
----
-
-# Hosting on a VPS (Ubuntu 22.04/24.04)
+# Deployment — Hosting on a VPS (Ubuntu 22.04/24.04)
 
 Any small VPS (1 vCPU / 1 GB RAM) works. The bot polls Telegram's API
 outbound — **no open ports, domain, TLS certificate, or reverse proxy is
 required**. The install directory is kept in an `APP_DIR` variable so you
 cannot mistype it; it is set to the Linux-standard `/opt` location. All steps
 run as `root` over SSH (use `sudo` if you log in as a normal user).
+
+> **Note on `/opt`:** it is a standard Linux directory (the conventional home
+> for manually-installed server software) and exists by default on every
+> Ubuntu system. It does **not** exist on Windows — run the VPS commands on
+> the VPS over SSH, not in your local Windows terminal.
 
 ## 1. Get a VPS
 
@@ -73,38 +37,27 @@ export APP_DIR=/opt/vt-apk-scanner-bot
 > `/srv/vt-apk-scanner-bot`)? Just change the variable; the rest of the guide
 > adapts.
 
-## 3. Copy the project to the VPS
+## 3. Clone the project and install dependencies
 
 The repository is public, so cloning needs **no account or authentication**:
 
 ```bash
 git clone https://github.com/ayusharyaneth/vt-apk-scanner-bot.git "$APP_DIR"
-```
-
-You only ever need GitHub credentials on the VPS if you want to `git push`
-from there (updates normally flow PC → GitHub → `git pull` on the VPS).
-
-Alternative — direct copy from your Windows PC (run in PowerShell):
-
-```powershell
-scp -r "path\to\vt-apk-scanner-bot" root@YOUR_VPS_IP:/opt/vt-apk-scanner-bot
-```
-
-⚠️ **Never copy or commit your `.env` file** — create it directly on the VPS
-(step 5). This matters because the repo is public: everything in Git history
-is world-readable, so the only acceptable place for secrets is the `.env`
-file on the machine that runs the bot.
-
-## 4. Install dependencies and verify
-
-```bash
 cd "$APP_DIR"
 npm ci
 npm run typecheck
 npm test
 ```
 
-## 5. Create the secrets file on the VPS
+You only ever need GitHub credentials on the VPS if you want to `git push`
+from there (updates normally flow PC → GitHub → `git pull` on the VPS).
+
+⚠️ **Never commit your `.env` file** — create it directly on the VPS (next
+step). The repo is public: everything in Git history is world-readable, so the
+only acceptable place for secrets is the `.env` file on the machine that runs
+the bot.
+
+## 4. Create the secrets file on the VPS
 
 ```bash
 nano "$APP_DIR/.env"
@@ -126,7 +79,7 @@ Lock it down:
 chmod 600 "$APP_DIR/.env"
 ```
 
-## 6. Run it under systemd (auto-start, auto-restart)
+## 5. Run it under systemd (auto-start, auto-restart)
 
 Create a dedicated user (don't run as root):
 
@@ -200,7 +153,7 @@ API key (HTTP 401)` — see Troubleshooting below.
 Once real credentials are in place and `bot.started` appears, send an APK and
 watch `journalctl` for `bot.apk_received` → `scan.started` → `scan.completed`.
 
-## 7. Test it
+## 6. Test it
 
 On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 
@@ -242,8 +195,8 @@ On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 
 - **`mkdir: cannot create directory '/opt': Permission denied` (or clone into
   `/opt` fails)** → you are running this on **Windows or macOS**, not on the
-  Ubuntu VPS. `/opt` is Linux-only. Use the [Local quick test](#local-quick-test-any-terminal-no-vps-needed)
-  instead; on the VPS, `/opt` always exists.
+  Ubuntu VPS. `/opt` is Linux-only — run these commands on the VPS over SSH
+  (`ssh root@YOUR_VPS_IP`, step 1); on Ubuntu, `/opt` always exists.
 - **`Invalid configuration: ...` at start** → a variable is missing/typo'd in
   `.env`; the error names exactly which ones.
 - **`Call to 'getMe' failed! (401 ...)`** → wrong `TELEGRAM_BOT_TOKEN` (with
