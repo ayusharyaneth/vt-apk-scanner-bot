@@ -6,11 +6,6 @@ required**. The install directory is kept in an `APP_DIR` variable so you
 cannot mistype it; it is set to the Linux-standard `/opt` location. All steps
 run as `root` over SSH (use `sudo` if you log in as a normal user).
 
-> **Note:** `/opt` is a standard Linux directory (the conventional home for
-> manually-installed server software) and exists by default on every Ubuntu
-> system. It does **not** exist on Windows — run these commands on the VPS
-> over SSH, not in your local Windows terminal.
-
 ## 1. Get a VPS
 
 Any Ubuntu 22.04/24.04 VPS works. Connect:
@@ -28,10 +23,6 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs git
 node --version   # must be v20.15 or newer
 
-# Where the bot will live. /opt is the standard Linux location for
-# manually-installed server software and exists by default on Ubuntu —
-# no mkdir needed (add one if you prefer: mkdir -p "$APP_DIR").
-export APP_DIR=/opt/vt-apk-scanner-bot
 ```
 
 > The `APP_DIR` variable only lives in your current SSH session — if you
@@ -66,19 +57,7 @@ the bot.
 nano "$APP_DIR/.env"
 ```
 
-Minimum required content:
-
-```
-TELEGRAM_BOT_TOKEN=...        # from @BotFather on Telegram
-VIRUSTOTAL_API_KEY=...        # from virustotal.com/gui/my-apikey (free tier is enough)
-AUTHORIZED_IDS=your_telegram_user_id   # send /id to the bot to discover it
-# optional:
-NVIDIA_API_KEY=...            # from build.nvidia.com — enables AI summaries
-```
-
-Every other option (upload policy, verdict thresholds, poll intervals, size
-caps, concurrency limits) has a safe default — see
-[configuration.md](configuration.md) for the full list.
+See [configuration.md](configuration.md) for the full env.
 
 Lock the file down:
 
