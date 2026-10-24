@@ -1,0 +1,25 @@
+{
+  "name": "apk-scanner-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot that automatically scans received APK files with the VirusTotal API and replies with a verdict report in the same chat.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20.15"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "grammy": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}
