@@ -1,4 +1,4 @@
-# Hosting the APK Scanner Bot on a VPS (Ubuntu)
+# Deployment — Hosting on a VPS (Ubuntu)
 
 Step-by-step deployment for a typical Linux VPS (Ubuntu 22.04/24.04).
 The bot is a single long-running Node.js process that polls Telegram's API —
@@ -26,22 +26,25 @@ node --version   # must be v20.15 or newer
 
 ## 3. Copy the project to the VPS
 
-**Option A — via Git** (recommended): push this project to a private GitHub
-repo, then:
+**Option A — via Git** (recommended): clone the repo directly:
 
 ```bash
-git clone https://github.com/YOU/apk-scanner-bot.git /opt/apk-scanner-bot
+git clone https://github.com/ayusharyaneth/apk-scanner-bot.git /opt/apk-scanner-bot
 ```
 
-**Option B — direct copy from your Windows PC** (run in PowerShell, from the
-project's parent directory):
+Private repo → authenticate first with one of:
+- `gh auth login` (GitHub CLI), or
+- a personal access token when git asks for a password, or
+- a deploy key (ssh-keygen + add under repo → Settings → Deploy keys).
+
+**Option B — direct copy from your Windows PC** (run in PowerShell):
 
 ```powershell
-scp -r "C:\Users\kushw\.zcode\workspace\db1fd1d8-ef0d-4cd4-b754-2f5a43de3cc0" root@YOUR_VPS_IP:/opt/apk-scanner-bot
+scp -r "path\to\apk-scanner-bot" root@YOUR_VPS_IP:/opt/apk-scanner-bot
 ```
 
-⚠️ **Never copy your `.env` file to a Git repo** — only via `scp` or by
-creating it directly on the VPS (step 5).
+⚠️ **Never copy or commit your `.env` file** — create it directly on the VPS
+(step 5).
 
 ## 4. Install dependencies and verify
 
@@ -58,14 +61,14 @@ npm test
 nano /opt/apk-scanner-bot/.env
 ```
 
-Fill in (see `.env.example` for all options):
+Minimum required content (see [configuration.md](configuration.md) for everything):
 
 ```
 TELEGRAM_BOT_TOKEN=...
 VIRUSTOTAL_API_KEY=...
 AUTHORIZED_IDS=your_telegram_user_id
 # optional:
-GLM_API_KEY=...
+NVIDIA_API_KEY=...
 ```
 
 Lock it down:
@@ -126,7 +129,7 @@ On Telegram, send an APK (≤ 20 MB) as a document to your bot. Expect:
 1. `⏳ APK received — downloading…`
 2. `⏳ SHA-256: …` (instant for files VirusTotal knows, minutes for new ones)
 3. The full report with verdict, engine counts and the VirusTotal link
-4. (if GLM configured) a `🤖 AI analysis` follow-up message
+4. (if NVIDIA NIM configured) a `🤖 AI analysis` follow-up message
 
 ## Day-2 operations
 

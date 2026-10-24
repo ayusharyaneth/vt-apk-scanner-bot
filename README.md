@@ -40,6 +40,16 @@ files reuse VirusTotal's own reports, an in-memory cache, or an in-flight merge.
 **Bot commands:** send an APK (automatic) · `/scan` as a reply forces a fresh
 re-scan · `/id` shows your ids · `/help` prints usage.
 
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [Configuration](docs/configuration.md) | Every environment variable, defaults, precedence |
+| [Deployment](docs/deployment.md) | Full VPS walkthrough (Ubuntu): systemd, hardening, troubleshooting |
+| [Architecture](docs/architecture.md) | Scan pipeline, module map, design decisions |
+| [Security & privacy](docs/security.md) | Threat model, secrets handling, VirusTotal upload policy |
+| [Testing](docs/testing.md) | What the 80 tests cover, how to run them |
+
 ## Requirements
 
 - **Node.js ≥ 20.15**, outbound HTTPS to `api.telegram.org` and `www.virustotal.com`
@@ -65,9 +75,9 @@ real time); known hashes get an instant report.
 
 All settings come from environment variables or `.env` (real environment
 variables win). **Every option, default, and description is documented in
-[`.env.example`](.env.example)** — including `ALLOW_UPLOADS` (set `false` to
-never upload confidential APKs), verdict thresholds, poll intervals, and size
-caps.
+[`docs/configuration.md`](docs/configuration.md)** — including `ALLOW_UPLOADS`
+(set `false` to never upload confidential APKs), verdict thresholds, poll
+intervals, and size caps.
 
 | Required | Purpose |
 | --- | --- |
@@ -80,8 +90,8 @@ caps.
 - Secrets come from env vars/`.env` and are redacted if they ever reach a log line
 - APKs are only read as bytes (hashing, ZIP parsing) — **never executed**
 - Rate limits, retries, and Telegram flood-waits are handled automatically
-- See [`.env.example`](.env.example) for `ALLOW_UPLOADS` (privacy control) and
-  [`DEPLOY.md`](DEPLOY.md) for the VPS hardening checklist
+- Full threat model and the VirusTotal upload-privacy policy:
+  [`docs/security.md`](docs/security.md)
 
 ## Testing
 
@@ -93,15 +103,15 @@ npm run typecheck # tsc --noEmit
 CI runs both on Node 20 and 22 for every push. Coverage includes clean /
 malicious / suspicious classification, report reuse, fresh scans, duplicates,
 unauthorized senders, API failures, rate limits, timeouts, invalid APKs, and
-config validation.
+config validation — full breakdown in [`docs/testing.md`](docs/testing.md).
 
 ## Deploying on a VPS
 
 Any small VPS (1 vCPU / 1 GB RAM) works — the bot is outbound-only, so no open
 ports, domain, or TLS is needed. Node install → clone → `.env` → systemd
-service: **the complete step-by-step guide lives in [`DEPLOY.md`](DEPLOY.md)**,
-including the systemd unit, day-2 operations, hardening checklist, and
-troubleshooting table.
+service: **the complete step-by-step guide lives in
+[`docs/deployment.md`](docs/deployment.md)**, including the systemd unit,
+day-2 operations, hardening checklist, and troubleshooting table.
 
 ## Limitations
 
